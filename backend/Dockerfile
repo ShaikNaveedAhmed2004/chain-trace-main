@@ -4,22 +4,20 @@ FROM eclipse-temurin:17-jdk-alpine
 # Set working directory
 WORKDIR /app
 
-# Copy Maven wrapper & pom.xml
+# Copy only pom.xml
 COPY pom.xml ./
-COPY mvnw ./
-COPY .mvn ./.mvn
 
-# Give execute permission for mvnw
-RUN chmod +x mvnw
-
-# Download dependencies (cache layer)
-RUN ./mvnw dependency:go-offline
-
-# Copy source code
+# Copy project source
 COPY src ./src
 
+# Install Maven
+RUN apk add --no-cache maven
+
+# Download dependencies
+RUN mvn -q dependency:go-offline
+
 # Build the project
-RUN ./mvnw clean package -DskipTests
+RUN mvn -q clean package -DskipTests
 
 # Run the application
 CMD ["java", "-jar", "target/blockchain-supply-chain-1.0.0.jar"]
