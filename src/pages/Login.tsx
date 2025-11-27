@@ -12,6 +12,7 @@ type UserRole = "admin" | "supplier" | "manufacturer" | "distributor" | "retaile
 
 const Login = () => {
   const [isLogin, setIsLogin] = useState(true);
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<UserRole>("supplier");
@@ -20,30 +21,43 @@ const Login = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
       const { authAPI } = await import("@/lib/api");
-      
+
       let response;
       if (isLogin) {
         response = await authAPI.login(email, password);
       } else {
-        response = await authAPI.register(email, password, role.toUpperCase());
+        response = await authAPI.register(name, email, password, role.toUpperCase());
       }
-      
+
       // Store token and user info
       localStorage.setItem("token", response.token);
-      localStorage.setItem("user", JSON.stringify({
-        email: response.email,
-        role: response.role,
-        id: response.userId,
-      }));
-      
-      toast({
-        title: isLogin ? "Login successful" : "Registration successful",
-        description: `Welcome ${response.role}!`,
-      });
-      
+      // The login response only returns token now, we might need to decode it or fetch profile
+      // For now, let's assume we can fetch profile or just store what we have if available.
+      // The new API documentation says login response is { token: "JWT_TOKEN" }
+      // So we can't store email/role/id from response directly unless we decode token or fetch profile.
+      // Let's fetch profile after login/register to get user details.
+
+      const { userAPI } = await import("@/lib/api");
+      try {
+        const userProfile = await userAPI.getProfile();
+        localStorage.setItem("user", JSON.stringify(userProfile));
+
+        toast({
+          title: isLogin ? "Login successful" : "Registration successful",
+          description: `Welcome ${userProfile.role}!`,
+        });
+      } catch (profileError) {
+        console.error("Failed to fetch profile", profileError);
+        // Fallback if profile fetch fails, though it shouldn't
+        toast({
+          title: isLogin ? "Login successful" : "Registration successful",
+          description: "Welcome!",
+        });
+      }
+
       // Redirect to dashboard
       navigate("/dashboard");
     } catch (error: any) {
@@ -71,6 +85,20 @@ const Login = () => {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {!isLogin && (
+              <div className="space-y-2">
+                <Label htmlFor="name">Name</Label>
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder="Enter your name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                />
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -82,7 +110,7 @@ const Login = () => {
                 required
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <Input

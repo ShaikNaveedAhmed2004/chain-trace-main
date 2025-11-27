@@ -6,36 +6,54 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
-import { batchAPI, type Batch } from "@/lib/api";
+import { batchAPI, productAPI, type Batch, type Product } from "@/lib/api";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const DistributorDashboard = () => {
   const { toast } = useToast();
   const [batches, setBatches] = useState<Batch[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [selectedBatchId, setSelectedBatchId] = useState("");
   const [newLocation, setNewLocation] = useState("");
-  const [newOwner, setNewOwner] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    loadBatches();
+    loadData();
   }, []);
+
+  const loadData = async () => {
+    try {
+      const [batchesData, productsData] = await Promise.all([
+        batchAPI.getAll(),
+        productAPI.getAll()
+      ]);
+      setBatches(batchesData.filter(b => b.status === 'IN_TRANSIT' || b.status === 'DELIVERED'));
+      setProducts(productsData);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.response?.data?.message || "Failed to load data",
+        variant: "destructive",
+      });
+    }
+  };
 
   const loadBatches = async () => {
     try {
       const data = await batchAPI.getAll();
       setBatches(data.filter(b => b.status === 'IN_TRANSIT' || b.status === 'DELIVERED'));
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.response?.data?.message || "Failed to load batches",
-        variant: "destructive",
-      });
+      console.error("Failed to reload batches", error);
     }
   };
 
+  const getProductName = (productId: number) => {
+    const product = products.find(p => p.id === productId);
+    return product ? product.name : `Product #${productId}`;
+  };
+
   const handleUpdateLocation = async () => {
-    if (!selectedBatchId || !newLocation.trim() || !newOwner.trim()) {
+    if (!selectedBatchId || !newLocation.trim()) {
       toast({
         title: "Error",
         description: "Please fill in all fields",
@@ -48,19 +66,17 @@ const DistributorDashboard = () => {
     try {
       await batchAPI.updateStatus(
         parseInt(selectedBatchId),
-        'DELIVERED',
         newLocation,
-        parseInt(newOwner)
+        'DELIVERED'
       );
 
       toast({
         title: "Shipment Updated",
         description: "Location updated successfully",
       });
-      
+
       setSelectedBatchId("");
       setNewLocation("");
-      setNewOwner("");
       loadBatches();
     } catch (error: any) {
       toast({
@@ -130,7 +146,7 @@ const DistributorDashboard = () => {
                 <SelectContent>
                   {inTransit.map((batch) => (
                     <SelectItem key={batch.id} value={batch.id.toString()}>
-                      {batch.batchNumber} - {batch.productName}
+                      {batch.batchNumber} - {getProductName(batch.productId)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -143,16 +159,6 @@ const DistributorDashboard = () => {
                 placeholder="e.g., Distribution Hub North"
                 value={newLocation}
                 onChange={(e) => setNewLocation(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="newOwner">Next Owner ID</Label>
-              <Input
-                id="newOwner"
-                type="number"
-                placeholder="e.g., 4"
-                value={newOwner}
-                onChange={(e) => setNewOwner(e.target.value)}
               />
             </div>
             <Button onClick={handleUpdateLocation} className="w-full" disabled={loading}>
@@ -169,7 +175,7 @@ const DistributorDashboard = () => {
           <CardDescription>All shipments in your distribution network</CardDescription>
         </CardHeader>
         <CardContent>
-          <BatchList batches={batches} onRefresh={loadBatches} />
+          <BatchList batches={batches} products={products} onRefresh={loadBatches} />
         </CardContent>
       </Card>
     </div>

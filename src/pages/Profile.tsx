@@ -246,7 +246,7 @@ const Profile = () => {
               <CardHeader>
                 <CardTitle>Update Email Address</CardTitle>
                 <CardDescription>
-                  Change your account email address. You'll need to verify your current password.
+                  Change your account email address.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -259,17 +259,6 @@ const Profile = () => {
                       value={newEmail}
                       onChange={(e) => setNewEmail(e.target.value)}
                       placeholder="your.email@example.com"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="emailPassword">Current Password</Label>
-                    <Input
-                      id="emailPassword"
-                      type="password"
-                      value={emailPassword}
-                      onChange={(e) => setEmailPassword(e.target.value)}
-                      placeholder="Enter your current password"
                       required
                     />
                   </div>

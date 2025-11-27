@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+const API_BASE_URL = 'https://chain-trace-main.onrender.com/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -16,6 +16,10 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    console.log('API Request:', config.method?.toUpperCase(), config.url, {
+      headers: config.headers,
+      data: config.data
+    });
     return config;
   },
   (error) => Promise.reject(error)
@@ -44,9 +48,6 @@ export interface User {
 
 export interface AuthResponse {
   token: string;
-  email: string;
-  role: string;
-  userId: number;
 }
 
 export interface Product {
@@ -55,55 +56,37 @@ export interface Product {
   description: string;
   category: string;
   sku: string;
-  createdBy: number;
-  createdByEmail: string;
-  createdAt: string;
 }
 
 export interface Batch {
   id: number;
   productId: number;
-  productName: string;
   batchNumber: string;
   quantity: number;
-  currentOwner: number;
-  currentOwnerEmail: string;
   currentLocation: string;
-  status: 'CREATED' | 'IN_TRANSIT' | 'DELIVERED' | 'SOLD';
-  createdAt: string;
+  status: string;
 }
 
 export interface SupplyChainEvent {
   id: number;
   batchId: number;
-  productId: number;
-  productName: string;
-  fromParty: number;
-  fromPartyEmail: string;
-  toParty: number;
-  toPartyEmail: string;
   location: string;
   status: string;
   timestamp: string;
-  txHash: string;
-  blockNumber: number;
-  verified: boolean;
 }
 
 export interface VerificationResponse {
-  batch: Batch;
-  product: Product;
-  events: SupplyChainEvent[];
-  allEventsVerified: boolean;
-  paymentStatus: 'PENDING' | 'RELEASED' | 'COMPLETED' | 'FAILED';
-  paymentAmount: number | null;
-  paymentTxHash: string | null;
+  productName: string;
+  batchNumber: string;
+  currentLocation: string;
+  status: string;
+  isAuthentic: boolean;
 }
 
 // Auth APIs
 export const authAPI = {
-  register: async (email: string, password: string, role: string) => {
-    const response = await api.post<AuthResponse>('/auth/register', { email, password, role });
+  register: async (name: string, email: string, password: string, role: string) => {
+    const response = await api.post<AuthResponse>('/auth/register', { name, email, password, role });
     return response.data;
   },
   login: async (email: string, password: string) => {
@@ -114,7 +97,7 @@ export const authAPI = {
 
 // Product APIs
 export const productAPI = {
-  create: async (product: Partial<Product>) => {
+  create: async (product: { name: string; description: string; category: string; sku: string }) => {
     const response = await api.post<Product>('/products', product);
     return response.data;
   },
@@ -126,11 +109,24 @@ export const productAPI = {
     const response = await api.get<Product>(`/products/${id}`);
     return response.data;
   },
+  update: async (id: number, product: { name: string; description: string; category: string; sku: string }) => {
+    const response = await api.put<Product>(`/products/${id}`, product);
+    return response.data;
+  },
+  delete: async (id: number) => {
+    await api.delete(`/products/${id}`);
+  },
 };
 
 // Batch APIs
 export const batchAPI = {
-  create: async (batch: Partial<Batch>) => {
+  create: async (batch: {
+    productId: number;
+    batchNumber: string;
+    quantity: number;
+    currentLocation: string;
+    status: string;
+  }) => {
     const response = await api.post<Batch>('/batches', batch);
     return response.data;
   },
@@ -138,20 +134,23 @@ export const batchAPI = {
     const response = await api.get<Batch[]>('/batches');
     return response.data;
   },
-  getMyBatches: async () => {
-    const response = await api.get<Batch[]>('/batches/my');
-    return response.data;
-  },
   getById: async (id: number) => {
     const response = await api.get<Batch>(`/batches/${id}`);
     return response.data;
   },
-  updateStatus: async (id: number, status: string, location: string, newOwner: number) => {
-    const response = await api.put<Batch>(`/batches/${id}/status`, { status, location, newOwner });
+  updateStatus: async (id: number, currentLocation: string, status: string) => {
+    const response = await api.put<Batch>(`/batches/${id}/status`, { currentLocation, status });
     return response.data;
+  },
+  delete: async (id: number) => {
+    await api.delete(`/batches/${id}`);
   },
   getHistory: async (id: number) => {
     const response = await api.get<SupplyChainEvent[]>(`/batches/${id}/history`);
+    return response.data;
+  },
+  getMyBatches: async () => {
+    const response = await api.get<Batch[]>('/batches/my');
     return response.data;
   },
 };
@@ -171,23 +170,23 @@ export const userAPI = {
     return response.data;
   },
   updateStatus: async (id: number, status: string) => {
-    const response = await api.put<User>(`/users/${id}/status?status=${status}`);
+    const response = await api.put<User>(`/users/${id}/status`, { status });
     return response.data;
   },
   updateRole: async (id: number, role: string) => {
-    const response = await api.put<User>(`/users/${id}/role?role=${role}`);
+    const response = await api.put<User>(`/users/${id}/role`, { role });
     return response.data;
   },
   getProfile: async () => {
     const response = await api.get<User>('/users/profile');
     return response.data;
   },
-  updateEmail: async (newEmail: string, currentPassword: string) => {
-    const response = await api.put<User>('/users/profile/email', { newEmail, currentPassword });
+  updateEmail: async (newEmail: string) => {
+    const response = await api.put<User>('/users/profile/email', { newEmail });
     return response.data;
   },
-  updatePassword: async (currentPassword: string, newPassword: string) => {
-    await api.put('/users/profile/password', { currentPassword, newPassword });
+  updatePassword: async (oldPassword: string, newPassword: string) => {
+    await api.put('/users/profile/password', { oldPassword, newPassword });
   },
   getActivity: async () => {
     const response = await api.get<any[]>('/users/activity');
@@ -197,32 +196,17 @@ export const userAPI = {
 
 // Batch Export/Import APIs
 export const batchExportAPI = {
-  exportCsv: async () => {
-    const response = await api.get('/batches/export/csv', {
+  export: async (format: 'csv' | 'json') => {
+    const response = await api.get(`/batches/export/${format}`, {
       responseType: 'blob',
     });
     return response.data;
   },
-  exportJson: async () => {
-    const response = await api.get('/batches/export/json', {
-      responseType: 'blob',
-    });
-    return response.data;
-  },
-  importCsv: async (file: File) => {
+  import: async (file: File) => {
     const formData = new FormData();
     formData.append('file', file);
-    const response = await api.post<Batch[]>('/batches/import/csv', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-    return response.data;
-  },
-  importJson: async (file: File) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    const response = await api.post<Batch[]>('/batches/import/json', formData, {
+    const format = file.name.endsWith('.json') ? 'json' : 'csv';
+    const response = await api.post<Batch[]>(`/batches/import/${format}`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -232,3 +216,4 @@ export const batchExportAPI = {
 };
 
 export default api;
+

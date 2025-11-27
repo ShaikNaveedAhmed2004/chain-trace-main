@@ -2,6 +2,7 @@ import { z } from "zod";
 
 // Auth schemas
 export const registerSchema = z.object({
+  name: z.string().trim().nonempty({ message: "Name is required" }).max(100),
   email: z.string().trim().email({ message: "Invalid email address" }).max(255),
   password: z.string().min(8, { message: "Password must be at least 8 characters" }).max(100),
   role: z.enum(["ADMIN", "SUPPLIER", "MANUFACTURER", "DISTRIBUTOR", "RETAILER", "CONSUMER"], {
@@ -26,16 +27,14 @@ export const productSchema = z.object({
 export const batchSchema = z.object({
   productId: z.number().positive({ message: "Please select a product" }),
   batchNumber: z.string().trim().nonempty({ message: "Batch number is required" }).max(100),
-  quantity: z.number().positive({ message: "Quantity must be greater than 0" }).int(),
-  currentLocation: z.string().trim().nonempty({ message: "Location is required" }).max(200)
+  quantity: z.number().positive({ message: "Quantity must be greater than 0" }),
+  currentLocation: z.string().trim().nonempty({ message: "Location is required" }).max(200),
+  status: z.string().trim().nonempty({ message: "Status is required" })
 });
 
 export const batchStatusUpdateSchema = z.object({
-  status: z.enum(["CREATED", "IN_TRANSIT", "DELIVERED", "SOLD"], {
-    errorMap: () => ({ message: "Invalid status" })
-  }),
-  location: z.string().trim().nonempty({ message: "Location is required" }).max(200),
-  newOwner: z.number().positive({ message: "Please select a new owner" })
+  status: z.string().trim().nonempty({ message: "Status is required" }),
+  currentLocation: z.string().trim().nonempty({ message: "Location is required" }).max(200)
 });
 
 // User management schemas
@@ -50,3 +49,4 @@ export type ProductFormData = z.infer<typeof productSchema>;
 export type BatchFormData = z.infer<typeof batchSchema>;
 export type BatchStatusUpdateFormData = z.infer<typeof batchStatusUpdateSchema>;
 export type UserUpdateFormData = z.infer<typeof userUpdateSchema>;
+

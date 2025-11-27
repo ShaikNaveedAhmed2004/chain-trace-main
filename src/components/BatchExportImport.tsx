@@ -21,16 +21,8 @@ export const BatchExportImport = ({ onImportSuccess }: BatchExportImportProps) =
   const handleExport = async (format: 'csv' | 'json') => {
     try {
       setExporting(true);
-      let blob: Blob;
-      let filename: string;
-
-      if (format === 'csv') {
-        blob = await batchExportAPI.exportCsv();
-        filename = 'batches.csv';
-      } else {
-        blob = await batchExportAPI.exportJson();
-        filename = 'batches.json';
-      }
+      const blob = await batchExportAPI.export(format);
+      const filename = `batches.${format}`;
 
       // Create download link
       const url = window.URL.createObjectURL(blob);
@@ -76,16 +68,7 @@ export const BatchExportImport = ({ onImportSuccess }: BatchExportImportProps) =
 
     try {
       setImporting(true);
-      const fileExtension = selectedFile.name.split('.').pop()?.toLowerCase();
-
-      let imported;
-      if (fileExtension === 'csv') {
-        imported = await batchExportAPI.importCsv(selectedFile);
-      } else if (fileExtension === 'json') {
-        imported = await batchExportAPI.importJson(selectedFile);
-      } else {
-        throw new Error('Unsupported file format. Please use CSV or JSON.');
-      }
+      const imported = await batchExportAPI.import(selectedFile);
 
       toast({
         title: "Success",
@@ -96,7 +79,7 @@ export const BatchExportImport = ({ onImportSuccess }: BatchExportImportProps) =
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
-      
+
       onImportSuccess?.();
     } catch (error: any) {
       toast({
@@ -179,7 +162,7 @@ export const BatchExportImport = ({ onImportSuccess }: BatchExportImportProps) =
             {importing ? "Importing..." : "Import Batches"}
           </Button>
           <p className="text-xs text-muted-foreground">
-            CSV format: BatchNumber, ProductName, Quantity, Location, Status
+            CSV format: ProductId, BatchNumber, Quantity, Location, Status
           </p>
         </CardContent>
       </Card>
