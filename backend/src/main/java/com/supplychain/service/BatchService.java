@@ -41,6 +41,7 @@ public class BatchService {
 
         Batch batch = Batch.builder()
                 .productId(product.getId())
+                .productName(product.getName())
                 .batchNumber(batchDTO.getBatchNumber())
                 .quantity(batchDTO.getQuantity())
                 .currentOwner(currentUser.getId())
@@ -132,28 +133,35 @@ public class BatchService {
     }
 
     @Transactional
-    protected SupplyChainEvent createSupplyChainEvent(Batch batch, Long fromParty, Long toParty, 
-                                                      String location, String status) {
-        // Record event on blockchain
-        SupplyChainEvent event = SupplyChainEvent.builder()
-                .batchId(batch.getId())
-                .productId(batch.getProductId())
-                .fromParty(fromParty)
-                .toParty(toParty)
-                .location(location)
-                .status(status)
-                .timestamp(LocalDateTime.now())
-                .verified(true)
-                .build();
+protected SupplyChainEvent createSupplyChainEvent(
+        Batch batch, Long fromParty, Long toParty,
+        String location, String status) {
 
-        String txHash = blockchainService.recordSupplyChainEvent(event);
-        Long blockNumber = blockchainService.generateBlockNumber();
+    
+    Product product = productRepository.findById(batch.getProductId())
+            .orElseThrow(() -> new RuntimeException("Product not found"));
 
-        event.setTxHash(txHash);
-        event.setBlockNumber(blockNumber);
+    SupplyChainEvent event = SupplyChainEvent.builder()
+            .batchId(batch.getId())
+            .productId(batch.getProductId())
+            .productName(product.getName())   
+            .fromParty(fromParty)
+            .toParty(toParty)
+            .location(location)
+            .status(status)
+            .timestamp(LocalDateTime.now())
+            .verified(true)
+            .build();
 
-        return eventRepository.save(event);
-    }
+    String txHash = blockchainService.recordSupplyChainEvent(event);
+    Long blockNumber = blockchainService.generateBlockNumber();
+
+    event.setTxHash(txHash);
+    event.setBlockNumber(blockNumber);
+
+    return eventRepository.save(event);
+}
+
 
     @Transactional
     protected void releasePayment(Batch batch) {

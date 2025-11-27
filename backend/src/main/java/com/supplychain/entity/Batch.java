@@ -45,6 +45,9 @@ public class Batch {
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+     @Column(name = "product_name", nullable = false)
+    private String productName;
+
     public enum BatchStatus {
         CREATED, IN_TRANSIT, DELIVERED, SOLD
     }

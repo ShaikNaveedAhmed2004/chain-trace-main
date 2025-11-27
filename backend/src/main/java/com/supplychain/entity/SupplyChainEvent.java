@@ -49,6 +49,6 @@ public class SupplyChainEvent {
     @Column(nullable = false)
     private Boolean verified;
 
-    @Column(nullable = false)
+     @Column(name = "product_name", nullable = false)
     private String productName;
 }
