@@ -41,6 +41,7 @@ public class BatchService {
 
         Batch batch = Batch.builder()
                 .productId(product.getId())
+                .productName(product.getName())
                 .batchNumber(batchDTO.getBatchNumber())
                 .quantity(batchDTO.getQuantity())
                 .currentOwner(currentUser.getId())
