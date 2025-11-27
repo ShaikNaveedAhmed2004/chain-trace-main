@@ -144,6 +144,7 @@ public class BatchService {
                 .status(status)
                 .timestamp(LocalDateTime.now())
                 .verified(true)
+                .productName(batch.getProductName())
                 .build();
 
         String txHash = blockchainService.recordSupplyChainEvent(event);
