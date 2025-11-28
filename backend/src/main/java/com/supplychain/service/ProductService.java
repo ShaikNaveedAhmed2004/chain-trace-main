@@ -71,4 +71,33 @@ public class ProductService {
                 .createdAt(product.getCreatedAt())
                 .build();
     }
+
+    @Transactional
+    public ProductDTO updateProduct(Long id, ProductDTO productDTO) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+
+        if (!product.getSku().equals(productDTO.getSku())) {
+            if (productRepository.existsBySku(productDTO.getSku())) {
+                throw new RuntimeException("Product SKU already exists");
+            }
+        }
+
+        product.setName(productDTO.getName());
+        product.setDescription(productDTO.getDescription());
+        product.setCategory(productDTO.getCategory());
+        product.setSku(productDTO.getSku());
+
+        product = productRepository.save(product);
+        User creator = userRepository.findById(product.getCreatedBy()).orElseThrow();
+        return convertToDTO(product, creator);
+    }
+
+    @Transactional
+    public void deleteProduct(Long id) {
+        if (!productRepository.existsById(id)) {
+            throw new RuntimeException("Product not found");
+        }
+        productRepository.deleteById(id);
+    }
 }

@@ -218,4 +218,62 @@ protected SupplyChainEvent createSupplyChainEvent(
                 .verified(event.getVerified())
                 .build();
     }
+
+    @Transactional
+    public BatchDTO updateBatch(Long id, BatchDTO batchDTO) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User currentUser = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Batch batch = batchRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Batch not found"));
+
+        if (!batch.getCurrentOwner().equals(currentUser.getId())) {
+            throw new RuntimeException("You are not authorized to update this batch");
+        }
+
+        // Update Batch Number if changed and unique
+        if (!batch.getBatchNumber().equals(batchDTO.getBatchNumber())) {
+            if (batchRepository.existsByBatchNumber(batchDTO.getBatchNumber())) {
+                throw new RuntimeException("Batch number already exists");
+            }
+            batch.setBatchNumber(batchDTO.getBatchNumber());
+        }
+
+        // Update other fields
+        batch.setQuantity(batchDTO.getQuantity());
+        batch.setCurrentLocation(batchDTO.getCurrentLocation());
+        
+        if (batchDTO.getProductId() != null) {
+            batch.setProductId(batchDTO.getProductId());
+            Product product = productRepository.findById(batchDTO.getProductId())
+                    .orElseThrow(() -> new RuntimeException("Product not found"));
+            batch.setProductName(product.getName());
+        }
+
+        // Do NOT update status here. Status is updated via updateBatchStatus
+
+        batch = batchRepository.save(batch);
+        
+        Product product = productRepository.findById(batch.getProductId()).orElseThrow();
+        User owner = userRepository.findById(batch.getCurrentOwner()).orElseThrow();
+        
+        return convertToDTO(batch, product, owner);
+    }
+
+    @Transactional
+    public void deleteBatch(Long id) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User currentUser = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Batch batch = batchRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Batch not found"));
+
+        if (!batch.getCurrentOwner().equals(currentUser.getId()) || batch.getStatus() != Batch.BatchStatus.CREATED) {
+            throw new RuntimeException("You are not authorized to delete this batch or the batch is not in CREATED state");
+        }
+        
+        batchRepository.deleteById(id);
+    }
 }

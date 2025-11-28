@@ -40,12 +40,25 @@ public class BatchController {
         return ResponseEntity.ok(batchService.getBatch(id));
     }
 
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('SUPPLIER')")
+    public ResponseEntity<BatchDTO> updateBatch(@PathVariable Long id, @Valid @RequestBody BatchDTO batchDTO) {
+        return ResponseEntity.ok(batchService.updateBatch(id, batchDTO));
+    }
+
     @PutMapping("/{id}/status")
     @PreAuthorize("hasAnyRole('MANUFACTURER', 'DISTRIBUTOR', 'RETAILER')")
     public ResponseEntity<BatchDTO> updateBatchStatus(
             @PathVariable Long id,
             @Valid @RequestBody BatchStatusUpdateDTO updateDTO) {
         return ResponseEntity.ok(batchService.updateBatchStatus(id, updateDTO));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('SUPPLIER', 'ADMIN')")
+    public ResponseEntity<Void> deleteBatch(@PathVariable Long id) {
+        batchService.deleteBatch(id);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{id}/history")
